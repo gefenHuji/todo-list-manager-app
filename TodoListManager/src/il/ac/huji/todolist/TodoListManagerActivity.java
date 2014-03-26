@@ -1,8 +1,13 @@
 package il.ac.huji.todolist;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -12,16 +17,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
-import android.widget.EditText;
 import android.widget.ListView;
 
 public class TodoListManagerActivity extends Activity {
 
-	public static final String EMPTY_STRING = "^\\s*$";
-	
+	private static final int START_DIALOG_ACTIVITY = 1;
+	Pattern pattern = Pattern.compile("Call (.*)");
+
 	ListView listview = null;
-	EditText editView = null;
-	ArrayList<String> array = new ArrayList<String>();
+	ArrayList<Task> array = new ArrayList<Task>();
 	CostumArrayAdapter adapter = null;
 
 	@Override
@@ -29,9 +33,6 @@ public class TodoListManagerActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_todo_list_manager);
 		listview = (ListView) findViewById(R.id.lstTodoItems);
-		editView = (EditText) findViewById(R.id.edtNewItem);
-
-		new ArrayList<String>();
 
 		registerForContextMenu(listview);
 
@@ -49,14 +50,28 @@ public class TodoListManagerActivity extends Activity {
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.menuItemAdd:
-			String newTask = editView.getText().toString();
-			if (!(newTask.matches(EMPTY_STRING))) {				
-				array.add(newTask);
-				adapter.notifyDataSetChanged();
-			}
-			editView.setText("");
+			Intent sendIntent = new Intent(getApplicationContext(), AddNewTodoItemActivity.class);
+			startActivityForResult(sendIntent, START_DIALOG_ACTIVITY);
 		}
 		return false;
+	}
+
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+		if (requestCode == START_DIALOG_ACTIVITY) {
+
+			if(resultCode == RESULT_OK){
+				if (!data.hasExtra("title") || !data.hasExtra("dueDate")) {
+					//TODO: there was a problem
+				} else {
+					String task = data.getStringExtra("title"); //TODO: consts title
+					Date date =(Date) data.getSerializableExtra("dueDate"); //TODO: consts dueDate
+					
+					array.add(new Task(task, date));
+					adapter.notifyDataSetChanged();
+				}
+			}
+		}
 	}
 
 	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
@@ -67,18 +82,44 @@ public class TodoListManagerActivity extends Activity {
 		} catch (ClassCastException e) {
 			return;
 		}
-		String item = adapter.getItem(info.position);
+		String item = adapter.getItem(info.position).taskStr;
 
-		menu.setHeaderTitle(item);// if your table name is name
+		menu.setHeaderTitle(item);
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.edit_task_menu, menu);
-
+		Matcher matcher = pattern.matcher(item);
+		if (!matcher.find()) {
+			menu.findItem(R.id.menuItemCall).setVisible(false);
+		} else {
+			menu.findItem(R.id.menuItemCall).setVisible(true);
+			menu.findItem(R.id.menuItemCall).setTitle(item);
+		}
 	}
 
 	public boolean onContextItemSelected(MenuItem item) {
 		AdapterContextMenuInfo info =(AdapterContextMenuInfo)item.getMenuInfo();
-		array.remove(info.position);
-		adapter.notifyDataSetChanged();
+		switch (item.getItemId()) {
+		case R.id.menuItemDelete:			
+			array.remove(info.position);
+			adapter.notifyDataSetChanged();
+			break;
+		case R.id.menuItemCall:
+//			System.out.println(item.getTitle());
+			String number = "";
+			Matcher matcher = pattern.matcher(item.getTitle());
+			if (!matcher.find()) {
+				//TODO:
+				System.out.println("something is wrong");
+			} else {
+				number = matcher.group(1);
+			}
+		    Intent intent = new Intent(Intent.ACTION_DIAL);
+		    intent.setData(Uri.parse("tel:" +number));
+		    startActivity(intent);
+			break;
+		default:
+			break;
+		}
 		return false;
 	}
 
