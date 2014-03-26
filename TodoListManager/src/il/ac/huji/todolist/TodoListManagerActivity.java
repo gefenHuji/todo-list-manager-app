@@ -10,6 +10,7 @@ public class TodoListManagerActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_todo_list_manager);
+		return;
 	}
 
 	@Override
