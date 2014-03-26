@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Todo List Manager</string>
+    <string name="app_name">Todo List App v1</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-
+    <string name="add_item">Add</string>
+	<string name="remove_item">Delete Item</string>
+    
 </resources>
