@@ -37,8 +37,8 @@ public class AddNewTodoItemActivity extends Activity {
 				Calendar calendar = Calendar.getInstance();
 				calendar.set(date.getYear(), date.getMonth(), date.getDayOfMonth());
 				Intent result = new Intent();
-				result.putExtra("title", newTask);
-				result.putExtra("dueDate", calendar.getTime());
+				result.putExtra(TodoListManagerActivity.EXTRA_TITLE, newTask);
+				result.putExtra(TodoListManagerActivity.EXTRA_DATE, calendar.getTime());
 				setResult(RESULT_OK, result);
 				finish();
 			}
