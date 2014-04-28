@@ -9,6 +9,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -47,24 +48,23 @@ public class TodoListManagerActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_todo_list_manager);
-		
-		datasource = new TasksDataSource(getApplicationContext());
-		datasource.open();
-		Cursor cursor = datasource.getCursorForAllTasks();
 
-		listview = (ListView) findViewById(R.id.lstTodoItems);
-		
 		String[] from = new String[] {MySQLiteHelper.COLUMN_TITLE,
 				MySQLiteHelper.COLUMN_DATE};
 		int[] to = new int[] {R.id.txtTodoTitle, R.id.txtTodoDueDate};
-		
-		cursorAdapter = new CustomCursorAdapter(
-				getApplicationContext(), R.layout.row, cursor, from, to);
+		listview = (ListView) findViewById(R.id.lstTodoItems);
 		array = new ArrayList<String>();
-		
 		registerForContextMenu(listview);
+		
+		
+		datasource = new TasksDataSource(getApplicationContext());
+		cursorAdapter = new CustomCursorAdapter(
+				getApplicationContext(), R.layout.row, null, from, to);
+		
+		GetAllTasks allTasks = new GetAllTasks();
+		allTasks.execute();
+		
 		listview.setAdapter(cursorAdapter);
-		datasource.close();
 	}
 
 	@Override
@@ -93,11 +93,8 @@ public class TodoListManagerActivity extends Activity {
 					String title = data.getStringExtra(EXTRA_TITLE);
 					Date date =(Date) data.getSerializableExtra(EXTRA_DATE);
 					Task task = new Task(title, date);
-					datasource.open();
-					datasource.createTask(task);
-					Cursor cursor = datasource.getCursorForAllTasks();
-					cursorAdapter.changeCursor(cursor);
-					datasource.close();
+					CreateTask create = new CreateTask(task);
+					create.execute();
 					
 					ParseObject obj = new ParseObject(CLASS_NAME);
 					obj.put(PARSE_TITLE, title);
@@ -138,11 +135,9 @@ public class TodoListManagerActivity extends Activity {
 		AdapterContextMenuInfo info =(AdapterContextMenuInfo)item.getMenuInfo();
 		switch (item.getItemId()) {
 		case R.id.menuItemDelete:
-			datasource.open();
-			datasource.deleteTask(info.id);
-			Cursor cursor = datasource.getCursorForAllTasks();
-			cursorAdapter.changeCursor(cursor);
-			datasource.close();
+			
+			DeleteTask delete = new DeleteTask(info.id);
+			delete.execute();
 			
 			objects.get(info.position).deleteInBackground();
 			objects.remove(info.position);
@@ -164,6 +159,102 @@ public class TodoListManagerActivity extends Activity {
 			break;
 		}
 		return false;
+	}
+	
+	private class CreateTask extends AsyncTask<Void, Cursor, Void> {
+		
+		private Task task;
+
+		public CreateTask(Task task) {
+			this.task = task;
+		}
+		
+		@Override
+		protected void onPreExecute() {
+			datasource.open();
+		}
+		
+		@Override
+		protected Void doInBackground(Void... params) {
+			
+			datasource.createTask(task);
+			Cursor cursor = datasource.getCursorForAllTasks();
+
+			publishProgress(cursor);
+			return null;
+		}
+		
+		@Override
+		protected void onProgressUpdate(Cursor... values) {
+			cursorAdapter.changeCursor(values[0]);
+		}
+		
+		@Override
+		protected void onPostExecute(Void result) {
+			datasource.close();
+		}
+	}
+	
+	
+	
+	private class DeleteTask extends AsyncTask<Integer, Cursor, Void> {
+
+		private long id;
+
+		public DeleteTask(long id) {
+			this.id = id;
+		}
+		
+		@Override
+		protected void onPreExecute() {
+			datasource.open();
+		}
+
+		@Override
+		protected Void doInBackground(Integer... params) {
+			datasource.deleteTask(id);
+			Cursor cursor = datasource.getCursorForAllTasks();
+			publishProgress(cursor);
+			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(Cursor... values) {
+			cursorAdapter.changeCursor(values[0]);
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			datasource.close();
+		}
+
+	}
+	
+	private class GetAllTasks extends AsyncTask<Void, Cursor, Void> {
+
+		@Override
+		protected void onPreExecute() {
+			datasource.open();
+		}
+
+		@Override
+		protected Void doInBackground(Void... params) {
+			Cursor cursor = datasource.getCursorForAllTasks();
+
+			publishProgress(cursor);
+			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(Cursor... values) {
+			cursorAdapter.changeCursor(values[0]);
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			datasource.close();
+		}
+
 	}
 	
 }
